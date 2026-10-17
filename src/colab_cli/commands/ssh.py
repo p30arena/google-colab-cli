@@ -345,6 +345,15 @@ def _close_quietly(ws: websocket.WebSocket) -> None:
 _DATA_OPCODES = (websocket.ABNF.OPCODE_BINARY, websocket.ABNF.OPCODE_TEXT)
 
 
+def _set_binary_stdio() -> None:
+    """Preserves SSH bytes through Windows CRT standard stream descriptors."""
+    if os.name == "nt":
+        import msvcrt
+
+        for stream in (sys.stdin, sys.stdout):
+            msvcrt.setmode(stream.buffer.fileno(), os.O_BINARY)
+
+
 def _bridge_proxy_mode(ws: websocket.WebSocket) -> int:
     """Bridges the WebSocket <-> stdin/stdout as an OpenSSH ProxyCommand.
 
@@ -354,6 +363,7 @@ def _bridge_proxy_mode(ws: websocket.WebSocket) -> int:
     Returns:
       0 when either side closes.
     """
+    _set_binary_stdio()
     stdin_fd = sys.stdin.buffer.fileno()
 
     def stdin_to_ws():
@@ -405,6 +415,9 @@ def _proxy_command(session: SessionState, identity: Optional[str]) -> str:
     ]
     if identity:
         self_cmd.extend(["--identity", identity])
+    # Windows OpenSSH starts ProxyCommand with CreateProcessW, not /bin/sh.
+    if os.name == "nt":
+        return subprocess.list2cmdline(self_cmd)
     return shlex.join(self_cmd)
 
 
@@ -417,7 +430,7 @@ def _ssh_base_args(proxy_command: str, identity: Optional[str]) -> list[str]:
         "-o",
         "StrictHostKeyChecking=no",
         "-o",
-        "UserKnownHostsFile=/dev/null",
+        f"UserKnownHostsFile={os.devnull}",
         "-o",
         "LogLevel=ERROR",
     ]
@@ -542,7 +555,10 @@ def _install_rm_signal_handlers(do_rm: Callable[[], None]) -> None:
         do_rm()
         os._exit(0)
 
-    for sig in (signal.SIGHUP, signal.SIGTERM, signal.SIGINT):
+    for name in ("SIGHUP", "SIGTERM", "SIGINT"):
+        sig = getattr(signal, name, None)
+        if sig is None:
+            continue
         try:
             signal.signal(sig, _on_signal)
         except (ValueError, OSError):

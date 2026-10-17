@@ -9,6 +9,10 @@ Designed to support seamless developer productivity, headless automation, and AI
 > [!NOTE]
 > **Platform support:** the Colab CLI currently supports **Linux and macOS** only. Windows is not supported at this time.
 
+This fork branch adds an experimental native Windows SSH transport patch. See
+[Windows SSH verification](docs/windows-ssh-verification.md) for the tested scope
+and live command/file-transfer evidence.
+
 > [!TIP]
 > Looking for in-notebook, interactive agent-assisted coding instead of a terminal workflow? See the [Colab MCP Server](https://github.com/googlecolab/colab-mcp).
 

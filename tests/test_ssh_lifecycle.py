@@ -34,11 +34,12 @@ test_run.py enforces for `colab run`:
 
 from unittest.mock import MagicMock
 
-from colab_cli.cli import app
-from colab_cli.commands import ssh as ssh_module
 import pytest
 import typer
 from typer.testing import CliRunner
+
+from colab_cli.cli import app
+from colab_cli.commands import ssh as ssh_module
 
 runner = CliRunner()
 
@@ -252,7 +253,8 @@ def test_proxy_mode_rm_teardown_idempotent(mock_common_state, mocker):
     )
 
     def bridge_then_hup(ws):
-        handlers[_signal.SIGHUP](_signal.SIGHUP, None)  # OpenSSH HUPs us
+        terminating = getattr(_signal, "SIGHUP", _signal.SIGTERM)
+        handlers[terminating](terminating, None)
         return 0
 
     mocker.patch.object(

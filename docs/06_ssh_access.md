@@ -1,5 +1,6 @@
 ---
 log:
+2026-10-17: Add native Windows SSH process quoting, binary standard streams, platform null device and portable cleanup signals, with Windows regression and live command/SCP evidence.
 2026-09-25: Cleaned up keep-alive daemon references in session creation and teardown documentation.
 2026-08-09: Added `--high-mem` passthrough when `colab ssh` auto-creates a runtime (forwards to `colab new --high-mem`).
 2026-07-17: Initial design and implementation of `colab ssh` — client side of SSH-over-WebSocket runtime access. Adds three modes (interactive shell, `-s SESSION`, and `--proxy-mode` OpenSSH ProxyCommand bridge), `--identity/-i` key selection, and per-HTTP-status handshake error messages. Server side is out of scope for this repo; the subcommand is a no-op against runtimes that do not expose the `/colab/ssh` endpoint (surfaces an actionable HTTP 404 message).
@@ -135,3 +136,17 @@ command over the WebSocket bridge -- exercising the same connect ->
 pubkey-header auth -> handshake -> bridge -> remote-exec path as the interactive
 shell, minus the TTY -- asserts the RSA-key rejection, and verifies ``colab
 stop`` leaves no orphan VM.
+
+
+## Native Windows SSH transport
+
+On Windows, the generated ProxyCommand uses native process argument quoting
+rather than POSIX shell quoting. The byte bridge puts the CRT stdin/stdout file
+descriptors into binary mode before reading or writing SSH data, so CR/LF and
+Ctrl-Z bytes are preserved. The local SSH known-hosts sink uses `os.devnull`;
+remote shell paths remain Linux paths. Cleanup installs only signals provided
+by the host platform.
+
+This covers SSH transport, not complete Windows support for every CLI command.
+See [Windows SSH verification](windows-ssh-verification.md) for the scope,
+regression checks and prior live integration evidence.
