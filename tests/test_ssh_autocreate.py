@@ -25,11 +25,12 @@ way OpenSSH ends a ProxyCommand).
 
 from unittest.mock import MagicMock
 
+import pytest
+import typer
+from typer.testing import CliRunner
+
 from colab_cli.cli import app
 from colab_cli.commands import ssh as ssh_module
-import pytest
-from typer.testing import CliRunner
-import typer
 
 runner = CliRunner()
 
@@ -316,7 +317,7 @@ def test_proxy_mode_signal_handler_installation(
     assert result.exit_code == 0
     if expect_installed:
         registered = {c.args[0] for c in sigmock.call_args_list}
-        assert {_signal.SIGHUP, _signal.SIGTERM, _signal.SIGINT} <= registered
+        assert {getattr(_signal, n) for n in ("SIGHUP", "SIGTERM", "SIGINT") if hasattr(_signal, n)} <= registered
     else:
         sigmock.assert_not_called()
 

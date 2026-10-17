@@ -1,0 +1,24 @@
+{
+  "session": "windows-ssh-smoke",
+  "platform": "win32",
+  "remote_command": true,
+  "upload": true,
+  "download": true,
+  "ssh_exit": 0,
+  "ssh_stdout": "root\nLinux\nSTONE_WINDOWS_SSH_OK",
+  "ssh_stderr": "",
+  "seconds": 5.969000000040978,
+  "upload_exit": 0,
+  "upload_stderr": "",
+  "download_exit": 0,
+  "download_stderr": "",
+  "roundtrip_sha256": "c8f5d0341d54d951a71b136e6e2afcb14d11ed8489a7ae126a8fee0df6ecf193",
+  "cleanup": {
+    "session_terminated": true,
+    "server_sessions_after": "No active sessions found on server."
+  },
+  "test_bytes": 4096,
+  "date": "2026-10-17",
+  "transport": "Windows OpenSSH -> patched Colab CLI ProxyCommand -> Colab WebSocket SSH",
+  "accelerator": "CPU"
+}

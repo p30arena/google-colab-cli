@@ -21,19 +21,22 @@ resolution, --rm teardown error handling, and end-to-end dispatch (interactive
 vs --proxy-mode).
 """
 
+import ctypes
 import io
+import os
 import shlex
 import subprocess
 import sys
 import threading
 from unittest.mock import MagicMock
 
-from colab_cli.cli import app
-from colab_cli.commands import ssh as ssh_module
 import pytest
 import typer
-from typer.testing import CliRunner
 import websocket
+from typer.testing import CliRunner
+
+from colab_cli.cli import app
+from colab_cli.commands import ssh as ssh_module
 
 runner = CliRunner()
 
@@ -230,6 +233,7 @@ def test_bridge_proxy_mode_pumps_ws_to_stdout(mocker):
         (abnf.OPCODE_CLOSE, b""),
     ]
 
+    mocker.patch.object(ssh_module, "_set_binary_stdio")
     rc = ssh_module._bridge_proxy_mode(ws)
     assert rc == 0
     assert fake_stdout.buffer.getvalue() == b"hello world"
@@ -270,6 +274,7 @@ def test_bridge_proxy_mode_pumps_stdin_to_ws(mocker):
     ws = MagicMock()
     ws.recv_data.side_effect = recv_data
 
+    mocker.patch.object(ssh_module, "_set_binary_stdio")
     rc = ssh_module._bridge_proxy_mode(ws)
     assert rc == 0
     assert [call.args[0] for call in ws.send_binary.call_args_list] == [
@@ -309,12 +314,23 @@ def test_bridge_proxy_mode_pumps_stdin_to_ws(mocker):
 def test_proxy_command_round_trips_through_the_shell(name, identity):
     """The ProxyCommand string must re-parse into the exact argv.
 
-    `ssh` hands the ProxyCommand to /bin/sh, so every argument has to survive
-    word-splitting verbatim -- a hostile session name must arrive as one
-    literal argument, never as a new word or a substitution.
+    The platform parser must preserve every argument verbatim: /bin/sh on
+    POSIX, native process argument parsing on Windows. A hostile session name
+    must arrive as one literal argument, never a new word or substitution.
     """
     cmd = ssh_module._proxy_command(_make_session(name=name), identity)
-    argv = shlex.split(cmd)
+    if os.name == "nt":
+        parser = ctypes.windll.shell32.CommandLineToArgvW
+        parser.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_int)]
+        parser.restype = ctypes.POINTER(ctypes.c_wchar_p)
+        count = ctypes.c_int()
+        pointer = parser(cmd, ctypes.byref(count))
+        try:
+            argv = [pointer[i] for i in range(count.value)]
+        finally:
+            ctypes.windll.kernel32.LocalFree(ctypes.cast(pointer, ctypes.c_void_p))
+    else:
+        argv = shlex.split(cmd)
 
     assert argv[:7] == [
         sys.executable,
